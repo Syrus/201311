@@ -18,6 +18,7 @@ library(ggplot2)
 #+ data-ingress, echo=FALSE
 ProjectDirectory = getwd()
 DataDirectory = "UCI HAR Dataset/"
+trainFile = "train.RData"
 if (!file.exists(DataDirectory)) {
     download.file("https://archive.ics.uci.edu/ml/machine-learning-databases/00240/UCI%20HAR%20Dataset.zip"
                   , "data.zip", "curl", quiet=TRUE, mode="wb")
@@ -26,18 +27,24 @@ if (!file.exists(DataDirectory)) {
 }
 stopifnot(file.exists(DataDirectory))
 setwd(DataDirectory)
-temp = read.table("activity_labels.txt", sep="")
-activityLabels = as.character(temp$V2)
-temp = read.table("features.txt", sep="")
-attributeNames = temp$V2
-Xtrain = read.table("train/X_train.txt", sep="")
-names(Xtrain) = attributeNames
-Ytrain = read.table("train/y_train.txt", sep="")
-names(Ytrain) = "Activity"
-Ytrain$Activity = as.factor(Ytrain$Activity)
-levels(Ytrain$Activity) = activityLabels
-trainSubjects = read.table("train/subject_train.txt", sep="")
-names(trainSubjects) = "subject"
-trainSubjects$subject = as.factor(trainSubjects$subject)
-train = cbind(Xtrain, trainSubjects, Ytrain)
+if (!file.exists(trainFile)) {
+    temp = read.table("activity_labels.txt", sep="")
+    activityLabels = as.character(temp$V2)
+    temp = read.table("features.txt", sep="")
+    attributeNames = temp$V2
+    Xtrain = read.table("train/X_train.txt", sep="")
+    names(Xtrain) = attributeNames
+    Ytrain = read.table("train/y_train.txt", sep="")
+    names(Ytrain) = "Activity"
+    Ytrain$Activity = as.factor(Ytrain$Activity)
+    levels(Ytrain$Activity) = activityLabels
+    trainSubjects = read.table("train/subject_train.txt", sep="")
+    names(trainSubjects) = "subject"
+    trainSubjects$subject = as.factor(trainSubjects$subject)
+    train = cbind(Xtrain, trainSubjects, Ytrain)
+    
+    save(train, file=trainFile)
+    rm(train,temp,Ytrain,Xtrain,trainSubjects,activityLabels,attributeNames)
+}
+load(trainFile)
 setwd(ProjectDirectory)
