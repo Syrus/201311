@@ -1,6 +1,6 @@
 #' # Analysis of UCI HAR Dataset
 #' 
-#' Syrus Nemat-Nasser (R@syrus.us)
+#' Syrus Nemat-Nasser (R [at] syrus [dot] us)
 #' 
 #' 2013-11
 

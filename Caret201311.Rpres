@@ -1,0 +1,62 @@
+<style type="text/css"> 
+.reveal section code{ 
+  font-size: 100%; 
+} 
+.reveal section code.r{ 
+  font-size: 125%; 
+} 
+.reveal .state-background {background: lightgrey;}
+</style>
+
+
+The Caret Package
+========================================================
+author: Syrus Nemat-Nasser (R [at] syrus [dot] us)
+date: November 19, 2013
+width: 1200
+height: 700
+autosize: true
+
+&nbsp;
+
+https://github.com/Syrus/201311
+
+```{r include=FALSE}
+library(knitr)
+opts_chunk$set(fig.path='figure/caret-', dev='png', fig.width=8, fig.height=4, dpi=200)
+```
+
+
+What is Caret?
+========================================================
+type: default
+
+*Classification And REgression Training*
+
+Caret was created by Max Kuhn
+
+- http://cran.r-project.org/web/packages/caret/
+- http://caret.r-forge.r-project.org/
+
+&nbsp;
+
+Install Caret with all supported packages:
+```{r eval=FALSE}
+install.packages("caret", dependencies=c("Depends", "Suggests"))
+```
+
+
+Load Packages
+========================================================
+
+```{r}
+library(caret)
+library(ggplot2)
+```
+
+Slide With Plot
+========================================================
+
+```{r, echo=FALSE}
+qplot(data=cars, speed, dist)
+```
