@@ -69,6 +69,7 @@ options(width=90) # prevent longer lines from wrapping
 library(ggplot2)
 library(plyr)
 library(reshape2)
+library(caret)
 #+ data summary, echo=TRUE
 summary(train$subject)
 summary(test$subject)
@@ -93,3 +94,15 @@ qplot(data=temp, x=value, binwidth = 0.025) + facet_wrap(~ stat, ncol=1)
 #' modeling methods that are sensitive to feature scaling, we might want to do some preprocessing.
 
 #' ## Preprocessing
+#' Caret offers several options for preprocessing continuous variables such as the predictors in the UCI HAR Dataset.
+#' 
+#' ### Z-scaling
+zScaleTrain = preProcess(train[,1:numPredictors])
+scaledX = predict(zScaleTrain, train[,1:numPredictors])
+#' ### Near Zero Value Predictor Detection
+nzv = nearZeroVar(scaledX, saveMetrics=TRUE)
+nzv[which(nzv$nzv)]
+head(nzv[order(nzv$percentUnique, decreasing=FALSE),], n=15)
+head(nzv[order(nzv$freqRatio, decreasing=TRUE),], n=15)
+#' ### Find Highly Correlated Predictors
+correlatedPredictors = findCorrelation(cor(scaledX), cutoff=0.99)
