@@ -79,30 +79,72 @@ all = rbind(train,test) # combine sets for visualization
 all$Partition = as.factor(all$Partition)
 qplot(data=all, x=subject, fill=Partition)
 qplot(data=all, x=subject, fill=Activity)
-#' We observe that the distribution of examples is fairly evently distributed accross experimental subjects and activity types.
+rm(all) # recover memory
+#' We observe that the distribution of examples is fairly evently distributed
+#' accross experimental subjects and activity types.
 #' 
-#' The README file indicates that the predictor variables are normalized and scaled to the range [-1,1]. We can
-#' perform a basic check to compare the distribution of each predictor to a normal distribution.
+#' The README file indicates that the predictor variables are normalized and scaled
+#' to the range [-1,1]. We can perform a basic check to compare the distribution of
+#' each predictor to a normal distribution.
 trainSd = colwise(sd)(train[,1:numPredictors])
 trainSd$stat = "Predictor Variable Standard Deviation"
 trainMean = colwise(mean)(train[,1:numPredictors])
 trainMean$stat = "Predictor Variable Mean"
 temp = melt(rbind(trainMean, trainSd), c("stat"))
 qplot(data=temp, x=value, binwidth = 0.025) + facet_wrap(~ stat, ncol=1)
+rm(temp,trainMean,trainSd)
 #' If each variable was z-scaled, the mean would be approximately zero and the standard deviation
 #' would be 1. These variables may be *normalized*, but they are not z-scaled. If we intend to use
 #' modeling methods that are sensitive to feature scaling, we might want to do some preprocessing.
 
 #' ## Preprocessing
-#' Caret offers several options for preprocessing continuous variables such as the predictors in the UCI HAR Dataset.
+#' Caret offers several options for preprocessing continuous variables such as the predictors in the UCI HAR
+#' dataset. We will prepare several different versions of the predictor matrix to compare how these perform
+#' when we build a predictive model.
 #' 
 #' ### Z-scaling
 zScaleTrain = preProcess(train[,1:numPredictors])
 scaledX = predict(zScaleTrain, train[,1:numPredictors])
-#' ### Near Zero Value Predictor Detection
+head(names(scaledX))
+#' ### Near Zero Variance Predictor Detection
 nzv = nearZeroVar(scaledX, saveMetrics=TRUE)
-nzv[which(nzv$nzv)]
-head(nzv[order(nzv$percentUnique, decreasing=FALSE),], n=15)
-head(nzv[order(nzv$freqRatio, decreasing=TRUE),], n=15)
-#' ### Find Highly Correlated Predictors
-correlatedPredictors = findCorrelation(cor(scaledX), cutoff=0.99)
+summary(nzv)
+head(nzv[order(nzv$percentUnique, decreasing=FALSE),], n=20)
+head(nzv[order(nzv$freqRatio, decreasing=TRUE),], n=20)
+#' ### Find and Remove Highly Correlated Predictors
+correlatedPredictors = findCorrelation(cor(scaledX), cutoff=0.9)
+#' There are `r length(correlatedPredictors)` correlated predictors to remove.
+reducedCorrelationX = scaledX[,-correlatedPredictors]
+head(names(reducedCorrelationX))
+#' The reduced correlation predictor set retains `r ncol(reducedCorrelationX)` variables.
+#' ### PCA Transformed Predictors
+pcaTrain = preProcess(scaledX, method="pca", thresh=0.95)
+#' The PCA transformed data retains `r pcaTrain$numComp` components to capture `r 100*pcaTrain$thresh`% of the variance.
+pcaX = predict(pcaTrain, scaledX)
+head(names(pcaX))
+#' After PCA, the original predictor names are no longer available in a straightforward manner.
+
+#' ## Data Splitting
+#' An important aspect of predictive modeling is ensuring that we can accurately predict model
+#' performance on unseen data; when we deploy our model, our reputation and that of our employer
+#' are often impacted by how our model performs. For the UCI HAR data, our *test* set is a strict
+#' hold-out sample. We will not use this set for model development or model selection.
+#' 
+#' Our training data set is not tiny, but neither is it large. We have data examples from a limited
+#' number of experimental subjects. My technical approach will be to use cross-validation by experimental
+#' subject for model selection. There are `r length(levels(train$subject))` training subjects. If we
+#' wish to cross-validate over every experimental subject, we can generate sets of training sample indices
+#' like this:
+leaveOneSubjectOutIndices = lapply(levels(train$subject), function(X) {which(!X==train$subject)})
+#' If instead we want to control computation time, we can create a different partition.
+cvBreaks = 3
+temp = sample(levels(train$subject), length(levels(train$subject))) # randomize subjects
+temp = split(temp, cut(1:length(temp), breaks=cvBreaks, labels=FALSE)) # split into CV groups
+cvGroupIndices = lapply(temp, function(X) {which(!train$subject %in% X)})
+
+#' ## Model Training
+ctrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
+library(doParallel)
+registerDoParallel(cores=detectCores()/2)
+model1 = train(scaledX, train$Activity, method="rf", trControl=ctrl)
+#stopImplicitCluster()
