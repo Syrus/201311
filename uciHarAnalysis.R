@@ -79,6 +79,7 @@ all = rbind(train,test) # combine sets for visualization
 all$Partition = as.factor(all$Partition)
 qplot(data=all, x=subject, fill=Partition)
 qplot(data=all, x=subject, fill=Activity)
+rm(all) # recover memory
 #' We observe that the distribution of examples is fairly evently distributed accross experimental subjects and activity types.
 #' 
 #' The README file indicates that the predictor variables are normalized and scaled to the range [-1,1]. We can
@@ -94,15 +95,29 @@ qplot(data=temp, x=value, binwidth = 0.025) + facet_wrap(~ stat, ncol=1)
 #' modeling methods that are sensitive to feature scaling, we might want to do some preprocessing.
 
 #' ## Preprocessing
-#' Caret offers several options for preprocessing continuous variables such as the predictors in the UCI HAR Dataset.
+#' Caret offers several options for preprocessing continuous variables such as the predictors in the UCI HAR
+#' dataset. We will prepare several different versions of the predictor matrix to compare how these perform
+#' when we build a predictive model.
 #' 
 #' ### Z-scaling
 zScaleTrain = preProcess(train[,1:numPredictors])
 scaledX = predict(zScaleTrain, train[,1:numPredictors])
-#' ### Near Zero Value Predictor Detection
+head(names(scaledX))
+#' ### Near Zero Variance Predictor Detection
 nzv = nearZeroVar(scaledX, saveMetrics=TRUE)
-nzv[which(nzv$nzv)]
-head(nzv[order(nzv$percentUnique, decreasing=FALSE),], n=15)
-head(nzv[order(nzv$freqRatio, decreasing=TRUE),], n=15)
-#' ### Find Highly Correlated Predictors
-correlatedPredictors = findCorrelation(cor(scaledX), cutoff=0.99)
+summary(nzv)
+head(nzv[order(nzv$percentUnique, decreasing=FALSE),], n=20)
+head(nzv[order(nzv$freqRatio, decreasing=TRUE),], n=20)
+#' ### Find and Remove Highly Correlated Predictors
+correlatedPredictors = findCorrelation(cor(scaledX), cutoff=0.9)
+#' There are `r length(correlatedPredictors)` correlated predictors to remove.
+reducedCorrelationX = scaledX[,-correlatedPredictors]
+head(names(reducedCorrelationX))
+#' The reduced correlation predictor set retains `r ncol(reducedCorrelationX)` variables.
+#' ### PCA Transformed Predictors
+pcaTrain = preProcess(scaledX, method="pca", thresh=0.95)
+#' The PCA transformed data retains `r pcaTrain$numComp` components to capture `r 100*pcaTrain$thresh`% of the variance.
+pcaX = predict(pcaTrain, scaledX)
+head(names(pcaX))
+#' After PCA, the original predictor names are no longer available in a straightforward manner.
+
