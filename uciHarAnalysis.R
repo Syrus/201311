@@ -112,13 +112,13 @@ summary(nzv)
 head(nzv[order(nzv$percentUnique, decreasing=FALSE),], n=20)
 head(nzv[order(nzv$freqRatio, decreasing=TRUE),], n=20)
 #' ### Find and Remove Highly Correlated Predictors
-correlatedPredictors = findCorrelation(cor(scaledX), cutoff=0.9)
+correlatedPredictors = findCorrelation(cor(scaledX), cutoff=0.95)
 #' There are `r length(correlatedPredictors)` correlated predictors to remove.
 reducedCorrelationX = scaledX[,-correlatedPredictors]
 head(names(reducedCorrelationX))
 #' The reduced correlation predictor set retains `r ncol(reducedCorrelationX)` variables.
 #' ### PCA Transformed Predictors
-pcaTrain = preProcess(scaledX, method="pca", thresh=0.95)
+pcaTrain = preProcess(scaledX, method="pca", thresh=0.99)
 #' The PCA transformed data retains `r pcaTrain$numComp` components to capture `r 100*pcaTrain$thresh`% of the variance.
 pcaX = predict(pcaTrain, scaledX)
 head(names(pcaX))
@@ -137,14 +137,22 @@ head(names(pcaX))
 #' like this:
 leaveOneSubjectOutIndices = lapply(levels(train$subject), function(X) {which(!X==train$subject)})
 #' If instead we want to control computation time, we can create a different partition.
-cvBreaks = 3
+cvBreaks = 5
 temp = sample(levels(train$subject), length(levels(train$subject))) # randomize subjects
 temp = split(temp, cut(1:length(temp), breaks=cvBreaks, labels=FALSE)) # split into CV groups
 cvGroupIndices = lapply(temp, function(X) {which(!train$subject %in% X)})
 
 #' ## Model Training
-ctrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
+#ctrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
+library(parallel)
+cl = parallel::makeForkCluster(nnodes=detectCores()/2)
 library(doParallel)
-registerDoParallel(cores=detectCores()/2)
-model1 = train(scaledX, train$Activity, method="rf", trControl=ctrl)
-#stopImplicitCluster()
+registerDoParallel(cl)
+#getDoParWorkers()
+#model1 = train(scaledX, train$Activity, method="rf", trControl=ctrl)
+rfCtrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
+modelRF = train(reducedCorrelationX, train$Activity, method="parRF", trControl=rfCtrl, tuneGrid = data.frame(.mtry = c(2,5,7,10,15,20,30)))
+print(modelRF)
+plot(modelRF)
+#stopCluster(cl)
+
