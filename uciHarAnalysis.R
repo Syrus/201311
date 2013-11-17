@@ -181,9 +181,26 @@ print(confusionMatrix(modelParRF))
 saveFile = paste(DataDirectory, "modelKnn.RData", sep='')
 if (!file.exists(saveFile)) {
     knnCtrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
-    modelKnn = train(reducedCorrelationX, train$Activity, method="knn", trControl=knnCtrl, tuneGrid = data.frame(.k = c(5,10,15,20)))
+    modelKnn = train(reducedCorrelationX, train$Activity, method="knn", trControl=knnCtrl
+                     , tuneGrid = data.frame(.k = c(5,10,15,20)))
     save(knnCtrl, modelKnn, correlatedPredictors, zScaleTrain, file=saveFile)
 }
 if (!exists("modelKnn")) { load(saveFile) }
 print(modelKnn)
 confusionMatrix(modelKnn)
+#' ### Selecting the "best" model
+#' For simplicity, we will choose one of the *best* model based on overall cross-validation accuracy
+#' which leaves us with one of the random forest models.
+bestModel = modelRF
+#' ### Predicting generalization performance
+holdoutX = predict(zScaleTrain, test[,1: numPredictors])[,-correlatedPredictors]
+holdoutLabels = test$Activity
+holdoutPrediction = predict(bestModel, holdoutX)
+head(holdoutPrediction)
+holdoutConfusionMatrix = confusionMatrix(holdoutPrediction, holdoutLabels)
+print(holdoutConfusionMatrix)
+#' #### Comparison of holdout predictions and cross-validation predictions
+print(confusionMatrix(bestModel), digits=2)
+print(100 * (holdoutConfusionMatrix$table / sum(holdoutConfusionMatrix$table)), digits=1)
+#' Finally, we will save an image of all workspace objects so we can use them in the presentation.
+save.image(file="workspaceImage.RData")
