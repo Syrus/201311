@@ -137,22 +137,44 @@ head(names(pcaX))
 #' like this:
 leaveOneSubjectOutIndices = lapply(levels(train$subject), function(X) {which(!X==train$subject)})
 #' If instead we want to control computation time, we can create a different partition.
-cvBreaks = 5
+cvBreaks = 7
 temp = sample(levels(train$subject), length(levels(train$subject))) # randomize subjects
 temp = split(temp, cut(1:length(temp), breaks=cvBreaks, labels=FALSE)) # split into CV groups
 cvGroupIndices = lapply(temp, function(X) {which(!train$subject %in% X)})
 
 #' ## Model Training
-#ctrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
+#' ### Set up parallel processing
 library(parallel)
 cl = parallel::makeForkCluster(nnodes=detectCores()/2)
+setDefaultCluster(cl)
 library(doParallel)
 registerDoParallel(cl)
-#getDoParWorkers()
-#model1 = train(scaledX, train$Activity, method="rf", trControl=ctrl)
-rfCtrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
-modelRF = train(reducedCorrelationX, train$Activity, method="parRF", trControl=rfCtrl, tuneGrid = data.frame(.mtry = c(2,5,7,10,15,20,30)))
+getDoParWorkers()
+#' ### Train a Random Forest model using method='rf'
+saveFile = paste(DataDirectory, "modelRF.RData", sep='')
+if (!file.exists(saveFile)) {
+    rfCtrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
+    modelRF = train(reducedCorrelationX, train$Activity, method="rf", trControl=rfCtrl
+                    , tuneGrid = data.frame(.mtry = c(2,5,10,15,20)), importance=TRUE)
+    save(rfCtrl, modelRF, correlatedPredictors, zScaleTrain, file=saveFile)
+}
+if (!exists("modelRF")) { load(saveFile) }
 print(modelRF)
 plot(modelRF)
-#stopCluster(cl)
-
+print(confusionMatrix(modelRF))
+m = as.data.frame(modelRF$finalModel$importance)
+m = m[order(m$MeanDecreaseAccuracy, decreasing=TRUE),]
+head(m, n=20)
+#' ### Train a Random Forest model using method='parRF'
+saveFile = paste(DataDirectory, "modelParRF.RData", sep='')
+if (!file.exists(saveFile)) {
+    parRfCtrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
+    modelParRF = train(reducedCorrelationX, train$Activity, method="parRF", trControl=parRfCtrl
+                       , tuneGrid = data.frame(.mtry = c(2,5,10,15,20)), importance=TRUE)
+    save(parRfCtrl, modelParRF, correlatedPredictors, zScaleTrain, file=saveFile)
+}
+if (!exists("modelParRF")) { load(saveFile) }
+print(modelParRF)
+plot(modelParRF)
+print(confusionMatrix(modelParRF))
+#' ### Train
