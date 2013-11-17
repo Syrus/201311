@@ -177,4 +177,13 @@ if (!exists("modelParRF")) { load(saveFile) }
 print(modelParRF)
 plot(modelParRF)
 print(confusionMatrix(modelParRF))
-#' ### Train
+#' ### Train using a simpler model
+saveFile = paste(DataDirectory, "modelKnn.RData", sep='')
+if (!file.exists(saveFile)) {
+    knnCtrl = trainControl(method="cv", number=length(cvGroupIndices), index=cvGroupIndices, classProbs=TRUE)
+    modelKnn = train(reducedCorrelationX, train$Activity, method="knn", trControl=knnCtrl, tuneGrid = data.frame(.k = c(5,10,15,20)))
+    save(knnCtrl, modelKnn, correlatedPredictors, zScaleTrain, file=saveFile)
+}
+if (!exists("modelKnn")) { load(saveFile) }
+print(modelKnn)
+confusionMatrix(modelKnn)
