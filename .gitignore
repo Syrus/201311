@@ -8,3 +8,4 @@ figure/*
 Caret*.md
 Caret*-figure*
 *RData
+*-cache/*

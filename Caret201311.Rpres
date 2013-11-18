@@ -24,35 +24,93 @@ https://github.com/Syrus/201311
 ```{r include=FALSE}
 library(knitr)
 opts_chunk$set(fig.path='figure/caret-', dev='png', fig.width=8, fig.height=4, dpi=200)
+opts_chunk$set(cache=TRUE)
+options(width=100)
 ```
 
 
-What is Caret?
+The Caret Package for R
 ========================================================
-type: default
 
 *Classification And REgression Training*
 
-Caret was created by Max Kuhn
-
-- http://cran.r-project.org/web/packages/caret/
-- http://caret.r-forge.r-project.org/
-
 &nbsp;
 
-Install Caret with all supported packages:
+Caret was created by Max Kuhn
+- http://cran.r-project.org/web/packages/caret/
+- http://caret.r-forge.r-project.org/
+- http://appliedpredictivemodeling.com/
+
+&nbsp;
 ```{r eval=FALSE}
 install.packages("caret", dependencies=c("Depends", "Suggests"))
 ```
 
-
-Load Packages
+Regression
 ========================================================
 
+<center>
+**Ideal Problem**
+
+${\bf y} = {\bf r}({\bf x}) + \bf{\epsilon}$
+
+${\bf x} \in \mathbb{R}^n$
+
+${\bf y} \in \mathbb{R}^m$
+</center>
+*****
+<center>
+**Prediction**
+
+${\bf h}({\bf x}) \in \mathbb{R}^m$
+
+${\bf h}({\bf x}) \simeq {\bf r}({\bf x})$
+
+</center>
+
+Caret Features
+========================================================
+
+&nbsp;
+
+- Pre-Processing
+
+- Data Splitting
+
+- Model Training and Tuning
+
+- Visualizations
+
+- Variable Importance
+
+- Feature Selection
+
+- Parallel Processing
+
+Example Data 1: earth::data(titanic)
+========================================================
 ```{r}
-library(caret)
-library(ggplot2)
+library(earth)
+data(etitanic)
+etitanic$survived = as.logical(etitanic$survived)
+str(etitanic)
+summary(etitanic)
 ```
+
+Example Data 2: UCI HAR Data
+========================================================
+
+
+========================================================
+
+Caret Function       | Description
+---------------------|-------------------
+**dummyVars**        | Generate dummy variables from factors
+**nearZeroVar**      | Identify variables with low variance
+**findCorrelation**  | Identify highly correlated variables
+**findLinearCombos** | Enumerate sets of linear combinations
+**preProcess**       | Centering and scaling; PCA; ICA; missing value imputation
+**classDist**        | Generate predictor variables from the distance to class centroids
 
 Slide With Plot
 ========================================================
