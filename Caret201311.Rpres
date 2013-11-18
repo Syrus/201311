@@ -1,6 +1,6 @@
 <style type="text/css"> 
 .reveal section code{ 
-  font-size: 100%; 
+  font-size: 95%; 
 } 
 .reveal section code.r{ 
   font-size: 125%; 
@@ -23,7 +23,7 @@ https://github.com/Syrus/201311
 
 ```{r include=FALSE}
 library(knitr)
-opts_chunk$set(fig.path='figure/caret-', dev='png', fig.width=8, fig.height=4, dpi=200)
+opts_chunk$set(fig.path='figure/caret-', dev='png', fig.width=10, fig.height=5, dpi=180)
 opts_chunk$set(cache=TRUE)
 options(width=100)
 ```
@@ -45,6 +45,16 @@ Caret was created by Max Kuhn
 ```{r eval=FALSE}
 install.packages("caret", dependencies=c("Depends", "Suggests"))
 ```
+
+Load Useful Packages
+========================================================
+```{r}
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(caret)
+```
+
 
 Regression
 ========================================================
@@ -71,8 +81,6 @@ ${\bf h}({\bf x}) \simeq {\bf r}({\bf x})$
 Caret Features
 ========================================================
 
-&nbsp;
-
 - Pre-Processing
 
 - Data Splitting
@@ -87,20 +95,66 @@ Caret Features
 
 - Parallel Processing
 
-Example Data 1: earth::data(titanic)
+Example Data | UCI HAR Data
 ========================================================
+
+<small>http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones</small>
+
+Experimental data was collected from 30 human subjects.
+
+Subjects carried a Samsung smartphone and self-reported their *Activity*.
+
+Time-frequency features were computed from the raw sensor data.*
+
+After running the knitr::spin notebook [**uciHarAnalysis.R**](https://github.com/Syrus/201311/blob/master/uciHarAnalysis.R):
 ```{r}
-library(earth)
-data(etitanic)
-etitanic$survived = as.logical(etitanic$survived)
-str(etitanic)
-summary(etitanic)
+load("UCI HAR Dataset/dataset.RData")
 ```
 
-Example Data 2: UCI HAR Data
+<center><small><font color="darkslategray">* Raw sensor data is also included in the download; we won't use it.</font></small></center>
+
+UCI HAR Data Set | Hold-out Partition
 ========================================================
+```{r echo=FALSE}
+train$Partition="Train"
+test$Partition = "Test"
+uciHar = rbind(train,test) # combine sets for visualization
+uciHar$Partition = as.factor(uciHar$Partition)
+```
+```{r echo=FALSE}
+qplot(data=uciHar, x=subject, fill=Partition)
+```
+
+UCI HAR Data Set | Target Variable
+========================================================
+```{r echo=FALSE}
+qplot(data=uciHar, x=subject, fill=Activity)
+```
 
 
+UCI HAR Data Set | Predictor Variables
+========================================================
+```{r}
+numPredictors = ncol(uciHar) - 3
+str(uciHar[,1:18])
+```
+<center><font color="darkgreen">There are `r numPredictors`
+predictor variables.</font></center>
+
+UCI HAR Data Set | Predictor Variable "Normalization"
+========================================================
+```{r echo=FALSE}
+trainSd = colwise(sd)(train[,1:numPredictors])
+trainSd$stat = "Predictor Variable Standard Deviation"
+trainMean = colwise(mean)(train[,1:numPredictors])
+trainMean$stat = "Predictor Variable Mean"
+temp = melt(rbind(trainMean, trainSd), c("stat"))
+qplot(data=temp, x=value, binwidth = 0.025) + facet_wrap(~ stat, ncol=1)
+rm(temp,trainMean,trainSd)
+```
+
+
+Pre-Processing
 ========================================================
 
 Caret Function       | Description
@@ -112,9 +166,28 @@ Caret Function       | Description
 **preProcess**       | Centering and scaling; PCA; ICA; missing value imputation
 **classDist**        | Generate predictor variables from the distance to class centroids
 
-Slide With Plot
+
+Aside: Discrete predictor variables
+========================================================
+```{r}
+library(earth)
+data(etitanic)
+etitanic$survived = as.logical(etitanic$survived)
+str(etitanic)
+summary(etitanic)
+```
+
+Aside: Discrete predictor variables
 ========================================================
 
-```{r, echo=FALSE}
-qplot(data=cars, speed, dist)
+**caret::dummyVars**
+
+```{r}
+dummies <- dummyVars(survived ~ ., data = etitanic)
+head(predict(dummies, newdata = etitanic))
+str(predict(dummies, newdata = etitanic))
 ```
+```{r include=FALSE}
+rm(etitanic, dummies)
+```
+

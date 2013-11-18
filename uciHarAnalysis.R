@@ -189,7 +189,7 @@ if (!exists("modelKnn")) { load(saveFile) }
 print(modelKnn)
 confusionMatrix(modelKnn)
 #' ### Selecting the "best" model
-#' For simplicity, we will choose one of the *best* model based on overall cross-validation accuracy
+#' For simplicity, we will choose the *best* model based on overall cross-validation accuracy
 #' which leaves us with one of the random forest models.
 bestModel = modelRF
 #' ### Predicting generalization performance
