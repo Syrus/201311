@@ -3,7 +3,7 @@
   font-size: 95%; 
 } 
 .reveal section code.r{ 
-  font-size: 125%; 
+  font-size: 100%; 
 } 
 .reveal .state-background {background: lightgrey;}
 </style>
@@ -15,7 +15,7 @@ author: Syrus Nemat-Nasser (R [at] syrus [dot] us)
 date: November 19, 2013
 width: 1200
 height: 700
-autosize: true
+autosize: false
 
 &nbsp;
 
@@ -46,15 +46,15 @@ Caret was created by Max Kuhn
 install.packages("caret", dependencies=c("Depends", "Suggests"))
 ```
 
-Load Useful Packages
+Aside: Load Useful Packages
 ========================================================
 ```{r}
 library(ggplot2)
 library(plyr)
-library(reshape2)
 library(caret)
 ```
 
+Note that Caret will automatically load packages as needed. We only need to load Caret to start using it.
 
 Regression
 ========================================================
@@ -75,6 +75,12 @@ ${\bf y} \in \mathbb{R}^m$
 ${\bf h}({\bf x}) \in \mathbb{R}^m$
 
 ${\bf h}({\bf x}) \simeq {\bf r}({\bf x})$
+
+&nbsp;
+
+**Objective Function**
+
+$\min(||{\bf h}({\bf x}) - {\bf r}({\bf x})||^l)$
 
 </center>
 
@@ -100,20 +106,22 @@ Example Data | UCI HAR Data
 
 <small>http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones</small>
 
-Experimental data was collected from 30 human subjects.
+Experimental data were collected from 30 human subjects.
 
-Subjects carried a Samsung smartphone and self-reported their *Activity*.
+Subjects carried a smartphone to record accelerometer and rate gyro sensor data.
 
 Time-frequency features were computed from the raw sensor data.*
+
+The goal was to determine the *human activity* from the measured data. 
 
 After running the knitr::spin notebook [**uciHarAnalysis.R**](https://github.com/Syrus/201311/blob/master/uciHarAnalysis.R):
 ```{r}
 load("UCI HAR Dataset/dataset.RData")
 ```
 
-<center><small><font color="darkslategray">* Raw sensor data is also included in the download; we won't use it.</font></small></center>
+<center><small><font color="darkslategray">* Raw sensor data are also included in the download; we won't use it.</font></small></center>
 
-UCI HAR Data Set | Hold-out Partition
+UCI HAR Data Set | Training and Hold-out
 ========================================================
 ```{r echo=FALSE}
 train$Partition="Train"
@@ -136,7 +144,8 @@ UCI HAR Data Set | Predictor Variables
 ========================================================
 ```{r}
 numPredictors = ncol(uciHar) - 3
-str(uciHar[,1:18])
+s = sample(1:numPredictors, 18) # select 18 randomly-selected predictors
+str(uciHar[,s])
 ```
 <center><font color="darkgreen">There are `r numPredictors`
 predictor variables.</font></center>
@@ -154,7 +163,7 @@ rm(temp,trainMean,trainSd)
 ```
 
 
-Pre-Processing
+Caret Pre-Processing
 ========================================================
 
 Caret Function       | Description
@@ -189,5 +198,164 @@ str(predict(dummies, newdata = etitanic))
 ```
 ```{r include=FALSE}
 rm(etitanic, dummies)
+```
+
+Pre-Processing Continuous Variables
+========================================================
+
+**caret::preProcess**
+
+```{r include=FALSE}
+load("workspaceImage.RData")
+```
+
+```{r eval=FALSE}
+zScaleTrain = preProcess(train[,1:numPredictors], method=c("center", "scale")) 
+scaledX = predict(zScaleTrain, train[,1:numPredictors])
+```
+```{r}
+range(colwise(mean)(scaledX))
+range(colwise(sd)(scaledX))
+```
+
+```{r eval=FALSE}
+pcaTrain = preProcess(scaledX, method="pca", thresh=0.99)
+pcaX = predict(pcaTrain, scaledX)
+```
+<center><small>The PCA transformed data retains `r pcaTrain$numComp` components to capture `r 100*pcaTrain$thresh`% of the variance.</small></center>
+
+<center><small>Methods for preProcess include "BoxCox", "YeoJohnson", "expoTrans", "center", "scale", "range", "knnImpute", "bagImpute", "pca", "ica" and "spatialSign".</small></center>
+
+Aside: Principal Component Analysis
+=========================================================
+```{r}
+pcaResults = prcomp(scaledX, tol=sqrt(.Machine$double.eps))
+plot(pcaResults)
+```
+
+Aside: Principal Component Analysis
+=========================================================
+```{r}
+temp=data.frame(index=1:length(pcaResults$sdev), Variance=(pcaResults$sdev)**2)
+q = qplot(data=temp, index, Variance)
+print(q)
+```
+
+Aside: Principal Component Analysis
+=========================================================
+```{r}
+print(q + scale_y_log10())
+```
+
+Pre-Processing Continuous Variables
+=========================================================
+
+**caret::findCorrelation**
+
+```{r eval=FALSE}
+correlatedPredictors = findCorrelation(cor(scaledX), cutoff=0.95)
+reducedCorrelationX = scaledX[,-correlatedPredictors]
+```
+<center><small>We removed `r length(correlatedPredictors)` correlated predictors leaving us with `r numPredictors - length(correlatedPredictors)` predictors.</small></center>
+```{r}
+head(names(scaledX))
+head(names(reducedCorrelationX))
+head(names(pcaX))
+```
+
+Data Splitting
+=========================================================
+
+Our training data comes from a small number of human subjects
+```{r}
+summary(train$subject)
+```
+
+&nbsp;
+
+Prepare for cross-validation
+```{r eval=FALSE}
+cvBreaks = 7
+temp = sample(levels(train$subject), length(levels(train$subject))) # randomize subjects
+temp = split(temp, cut(1:length(temp), breaks=cvBreaks, labels=FALSE)) # split into CV groups
+cvGroupIndices = lapply(temp, function(X) {which(!train$subject %in% X)})
+```
+
+
+Parallel Processing
+=======================================================
+
+Recent versions of R include the **parallel** package.
+
+I was able to get Caret to use multiple cores with the cran doParallel package.
+
+```{r eval=FALSE}
+require(parallel)
+cl = parallel::makeForkCluster(nnodes=detectCores()/2)
+setDefaultCluster(cl)
+require(doParallel)
+registerDoParallel(cl)
+```
+
+When Caret detects a registered parallel backend, it automatically parallelizes the model training and tuing process.
+
+Model Training and Tuning | method='rf'
+=======================================================
+
+```{r eval=FALSE}
+rfCtrl = trainControl(method="cv", number=length(cvGroupIndices)
+                      , index=cvGroupIndices, classProbs=TRUE)
+modelRF = train(reducedCorrelationX, train$Activity, method="rf", trControl=rfCtrl
+                , tuneGrid = data.frame(.mtry = c(2,5,10,15,20)), importance=TRUE)
+print(modelRF)
+```
+
+```{r echo=FALSE}
+print(modelRF)
+```
+
+Model Training and Tuning | method='rf'
+=======================================================
+
+```{r echo=TRUE}
+confusionMatrix(modelRF)
+modelRF$times
+```
+
+Model Training and Tuning | method='rf'
+=======================================================
+
+```{r echo=TRUE}
+plot(modelRF)
+```
+
+Model Training and Tuning | method='parRF'
+=======================================================
+
+```{r eval=FALSE}
+parRfCtrl = trainControl(method="cv", number=length(cvGroupIndices)
+                         , index=cvGroupIndices, classProbs=TRUE)
+modelParRF = train(reducedCorrelationX, train$Activity, method="parRF", trControl=parRfCtrl
+                   , tuneGrid = data.frame(.mtry = c(2,5,10,15,20)), importance=TRUE)
+print(modelParRF)
+```
+
+```{r echo=FALSE}
+print(modelParRF)
+```
+
+Model Training and Tuning | method='parRF'
+=======================================================
+
+```{r echo=TRUE}
+confusionMatrix(modelParRF)
+modelParRF$times
+```
+
+Model Training and Tuning | method='parRF'
+=======================================================
+
+```{r echo=TRUE}
+plot(modelParRF)
 ```
 
