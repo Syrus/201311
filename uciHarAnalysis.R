@@ -197,6 +197,8 @@ holdoutX = predict(zScaleTrain, test[,1: numPredictors])[,-correlatedPredictors]
 holdoutLabels = test$Activity
 holdoutPrediction = predict(bestModel, holdoutX)
 head(holdoutPrediction)
+classProbPrediction = predict(bestModel, holdoutX, type="prob")
+head(classProbPrediction)
 holdoutConfusionMatrix = confusionMatrix(holdoutPrediction, holdoutLabels)
 print(holdoutConfusionMatrix)
 #' #### Comparison of holdout predictions and cross-validation predictions

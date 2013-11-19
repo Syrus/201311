@@ -293,6 +293,14 @@ temp = split(temp, cut(1:length(temp), breaks=cvBreaks, labels=FALSE)) # split i
 cvGroupIndices = lapply(temp, function(X) {which(!train$subject %in% X)})
 ```
 
+Caret Model Training and Tuning
+=======================================================
+
+Caret Functions         |
+------------------------|
+**train**               |
+**trainControl**        |
+
 Model Training and Tuning | method='knn'
 =======================================================
 
@@ -401,3 +409,73 @@ registerDoParallel(cl)
 ```
 
 When Caret detects a registered parallel backend, it automatically parallelizes the model training and tuing process.
+
+UCI HAR Data Set | Choosing a Model
+======================================================
+
+&nbsp;
+
+For simplicity, I choose the *best* model based on cross-validation accuracy.
+
+```{r echo=FALSE}
+temp = rbind(
+    data.frame(method="knn", max.accuracy=max(modelKnn$results$Accuracy)
+               , accuracySD=(modelKnn$results$AccuracySD[which(modelKnn$results$Accuracy == max(modelKnn$results$Accuracy))]))
+    , data.frame(method="rf", max.accuracy=max(modelRF$results$Accuracy)
+               , accuracySD=(modelRF$results$AccuracySD[which(modelRF$results$Accuracy == max(modelRF$results$Accuracy))]))
+    , data.frame(method="parRF", max.accuracy=max(modelParRF$results$Accuracy)
+               , accuracySD=(modelParRF$results$AccuracySD[which(modelParRF$results$Accuracy == max(modelParRF$results$Accuracy))]))
+    )
+temp$method = as.factor(temp$method)
+temp
+```
+
+&nbsp;
+
+- The two random forest models have equivalent performance.
+
+- CV predicts an accuracy of 93% with a standard deviation of 4%.
+
+UCI HAR Data Set | Final Model
+=========================================================
+```{r eval=FALSE}
+bestModel = modelRF # choose the best model
+
+## Apply data preprocessing steps to hold-out set
+holdoutX = predict(zScaleTrain, test[,1: numPredictors])[,-correlatedPredictors]
+holdoutLabels = test$Activity
+
+## Use the model to predict outcomes for the hold-out set
+holdoutPrediction = predict(bestModel, holdoutX) # default type="raw"
+head(holdoutPrediction)
+```
+```{r echo=FALSE}
+head(holdoutPrediction)
+```
+
+```{r echo=TRUE}
+classProbPrediction = predict(bestModel, holdoutX, type="prob")
+head(classProbPrediction)
+```
+
+UCI HAR Data Set | Final Model
+=========================================================
+```{r}
+cvCM = confusionMatrix(bestModel) # cross-validation predictions
+print(100 * (cvCM$table / sum(cvCM$table)), digits=1)
+holdoutCM = confusionMatrix(holdoutPrediction, holdoutLabels)
+print(100 * (holdoutCM$table / sum(holdoutCM$table)), digits=1)
+```
+
+UCI HAR Data Set | Final Model
+=========================================================
+
+&nbsp;
+
+```{r}
+## Compute the overall accuracy of bestModel for the hold-out data
+holdoutAccuracy = sum(diag(holdoutCM$table)) / sum(holdoutCM$table)
+holdoutAccuracy
+```
+
+The overall accuracy for the hold-out data was `r formatC(100*holdoutAccuracy, digits=2)`% which is consistent with our cross-validation analysis.
