@@ -128,6 +128,7 @@ train$Partition="Train"
 test$Partition = "Test"
 uciHar = rbind(train,test) # combine sets for visualization
 uciHar$Partition = as.factor(uciHar$Partition)
+numPredictors = ncol(uciHar) - 3
 ```
 ```{r echo=FALSE}
 qplot(data=uciHar, x=subject, fill=Partition)
@@ -143,7 +144,6 @@ qplot(data=uciHar, x=subject, fill=Activity)
 UCI HAR Data Set | Predictor Variables
 ========================================================
 ```{r}
-numPredictors = ncol(uciHar) - 3
 s = sample(1:numPredictors, 18) # select 18 randomly-selected predictors
 str(uciHar[,s])
 ```
@@ -263,10 +263,22 @@ head(names(reducedCorrelationX))
 head(names(pcaX))
 ```
 
-Data Splitting
+Caret Data Splitting
 =========================================================
 
-Our training data comes from a small number of human subjects
+Caret Functions         |
+------------------------|
+**createDataPartition** |
+**maxDissim**           |
+**minDiss**             |
+**sumDiss**             |
+
+<font color="darkgreen">*The UCI HAR data set has a pre-selected hold-out sample.*</font>
+
+UCI HAR Data Set | Cross-validation
+=========================================================
+
+The HAR training data comes from a small number of human subjects
 ```{r}
 summary(train$subject)
 ```
@@ -281,23 +293,36 @@ temp = split(temp, cut(1:length(temp), breaks=cvBreaks, labels=FALSE)) # split i
 cvGroupIndices = lapply(temp, function(X) {which(!train$subject %in% X)})
 ```
 
-
-Parallel Processing
+Model Training and Tuning | method='knn'
 =======================================================
 
-Recent versions of R include the **parallel** package.
-
-I was able to get Caret to use multiple cores with the cran doParallel package.
-
 ```{r eval=FALSE}
-require(parallel)
-cl = parallel::makeForkCluster(nnodes=detectCores()/2)
-setDefaultCluster(cl)
-require(doParallel)
-registerDoParallel(cl)
+knnCtrl = trainControl(method="cv", number=length(cvGroupIndices)
+                       , index=cvGroupIndices, classProbs=TRUE)
+modelKnn = train(reducedCorrelationX, train$Activity, method="knn", trControl=knnCtrl
+                 , tuneGrid = data.frame(.k = c(5,10,15,20)))
+print(modelKnn)
 ```
 
-When Caret detects a registered parallel backend, it automatically parallelizes the model training and tuing process.
+```{r echo=FALSE}
+print(modelKnn)
+```
+
+Model Training and Tuning | method='knn'
+=======================================================
+
+```{r echo=TRUE}
+confusionMatrix(modelKnn)
+modelKnn$times
+```
+
+Model Training and Tuning | method='knn'
+=======================================================
+
+```{r echo=TRUE}
+plot(modelKnn)
+```
+
 
 Model Training and Tuning | method='rf'
 =======================================================
@@ -359,3 +384,20 @@ Model Training and Tuning | method='parRF'
 plot(modelParRF)
 ```
 
+
+Parallel Processing
+=======================================================
+
+Recent versions of R include the **parallel** package.
+
+I was able to get Caret to use multiple cores with the CRAN package **doParallel**.
+
+```{r eval=FALSE}
+require(parallel)
+cl = parallel::makeForkCluster(nnodes=detectCores()/2)
+setDefaultCluster(cl)
+require(doParallel)
+registerDoParallel(cl)
+```
+
+When Caret detects a registered parallel backend, it automatically parallelizes the model training and tuing process.
