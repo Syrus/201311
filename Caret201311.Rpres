@@ -470,12 +470,29 @@ print(100 * (holdoutCM$table / sum(holdoutCM$table)), digits=1)
 UCI HAR Data Set | Final Model
 =========================================================
 
-&nbsp;
-
 ```{r}
 ## Compute the overall accuracy of bestModel for the hold-out data
 holdoutAccuracy = sum(diag(holdoutCM$table)) / sum(holdoutCM$table)
 holdoutAccuracy
 ```
 
-The overall accuracy for the hold-out data was `r formatC(100*holdoutAccuracy, digits=2)`% which is consistent with our cross-validation analysis.
+<center>The overall accuracy for the hold-out data set was about `r formatC(100*holdoutAccuracy, digits=2)`%.</center>
+
+
+Aside: Random Forest OOB
+=========================================================
+
+RF uses out-of-bag (OOB) analysis to estimate test set error.
+
+```{r}
+tail(modelRF$finalModel$err.rate)
+```
+```{r include=FALSE}
+temp = modelRF$finalModel$confusion
+oob.accuracy = sum(diag(temp)) / sum(temp)
+oob.accuracy
+```
+OOB was unaware of **train$subject**.
+
+OOB predicts a generalization error of `r formatC(100*oob.accuracy, digits=3)`% which is
+notably higher than our CV estimate and our measured hold-out error.
