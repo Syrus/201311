@@ -101,6 +101,26 @@ Caret Features
 
 - Parallel Processing
 
+Caret Features
+========================================================
+transition: fade
+transition-speed: slow
+
+- **Pre-Processing**
+
+- Data Splitting
+
+- **Model Training and Tuning**
+
+- Visualizations
+
+- Variable Importance
+
+- Feature Selection
+
+- **Parallel Processing**
+
+
 Example Data | UCI HAR Data
 ========================================================
 
@@ -436,7 +456,7 @@ temp
 
 - CV predicts an accuracy of 93% with a standard deviation of 4%.
 
-UCI HAR Data Set | Final Model
+UCI HAR Data Set | Final Model (1)
 =========================================================
 ```{r eval=FALSE}
 bestModel = modelRF # choose the best model
@@ -458,7 +478,7 @@ classProbPrediction = predict(bestModel, holdoutX, type="prob")
 head(classProbPrediction)
 ```
 
-UCI HAR Data Set | Final Model
+UCI HAR Data Set | Final Model (2a)
 =========================================================
 ```{r}
 cvCM = confusionMatrix(bestModel) # cross-validation predictions
@@ -467,7 +487,28 @@ holdoutCM = confusionMatrix(holdoutPrediction, holdoutLabels)
 print(100 * (holdoutCM$table / sum(holdoutCM$table)), digits=1)
 ```
 
-UCI HAR Data Set | Final Model
+Aside: Renormalize confustion matrix
+=========================================================
+```{r}
+renormalizeConfusionMatrixColumns = function(cm) {
+    cm / rep(colSums(cm), times=nrow(cm), ncol=ncol(cm), byrow=TRUE)
+    }
+
+renormalizeConfusionMatrixColumns(cvCM$table)
+```
+
+<center>*Each column sums to 1.*</center>
+
+UCI HAR Data Set | Final Model (2b)
+=========================================================
+```{r}
+## Cross validation confusion matrix
+print(100 * renormalizeConfusionMatrixColumns(cvCM$table), digits=1)
+## Hold-out confusion matrix
+print(100 * renormalizeConfusionMatrixColumns(holdoutCM$table), digits=1)
+```
+
+UCI HAR Data Set | Final Model (3)
 =========================================================
 
 ```{r}
@@ -479,6 +520,21 @@ holdoutAccuracy
 <center>The overall accuracy for the hold-out data set was about `r formatC(100*holdoutAccuracy, digits=2)`%.</center>
 
 
+**Model Deployment**
+
+```{r eval=FALSE}
+save(zScaleTrain, correlatedPredictors, bestModel, file="bestModel.RData")
+
+load("bestModel.RData")
+
+scaledReducedX = predict(zScaleTrain, newDataX)[,-correlatedPredictors]
+newDataPrediction = predict(bestModel, scaledReducedX)
+```
+
+
+
+
+
 Aside: Random Forest OOB
 =========================================================
 
@@ -488,6 +544,7 @@ RF uses out-of-bag (OOB) analysis to estimate test set error.
 tail(modelRF$finalModel$err.rate)
 ```
 ```{r include=FALSE}
+## check that model confusion matrix confirms oob err.rate
 temp = modelRF$finalModel$confusion
 oob.accuracy = sum(diag(temp)) / sum(temp)
 oob.accuracy
