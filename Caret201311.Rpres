@@ -28,7 +28,6 @@ opts_chunk$set(cache=TRUE)
 options(width=100)
 ```
 
-
 The Caret Package for R
 ========================================================
 
@@ -70,7 +69,7 @@ ${\bf y} \in \mathbb{R}^m$
 </center>
 *****
 <center>
-**Prediction**
+**Model**
 
 ${\bf h}({\bf x}) \in \mathbb{R}^m$
 
@@ -139,7 +138,7 @@ After running the knitr::spin notebook [**uciHarAnalysis.R**](https://github.com
 load("UCI HAR Dataset/dataset.RData")
 ```
 
-<center><small><font color="darkslategray">* Raw sensor data are also included in the download; we won't use it.</font></small></center>
+<center><small><font color="darkslategray">* Raw sensor data are also included in the download.</font></small></center>
 
 UCI HAR Data Set | Training and Hold-out
 ========================================================
@@ -246,14 +245,14 @@ pcaX = predict(pcaTrain, scaledX)
 
 <center><small>Methods for preProcess include "BoxCox", "YeoJohnson", "expoTrans", "center", "scale", "range", "knnImpute", "bagImpute", "pca", "ica" and "spatialSign".</small></center>
 
-Aside: Principal Component Analysis
+Aside: Principal Component Analysis (1)
 =========================================================
 ```{r}
 pcaResults = prcomp(scaledX, tol=sqrt(.Machine$double.eps))
 plot(pcaResults)
 ```
 
-Aside: Principal Component Analysis
+Aside: Principal Component Analysis (2)
 =========================================================
 ```{r}
 temp=data.frame(index=1:length(pcaResults$sdev), Variance=(pcaResults$sdev)**2)
@@ -261,7 +260,7 @@ q = qplot(data=temp, index, Variance)
 print(q)
 ```
 
-Aside: Principal Component Analysis
+Aside: Principal Component Analysis (3)
 =========================================================
 ```{r}
 print(q + scale_y_log10())
@@ -316,10 +315,19 @@ cvGroupIndices = lapply(temp, function(X) {which(!train$subject %in% X)})
 Caret Model Training and Tuning
 =======================================================
 
-Caret Functions         |
+Training Functions      |
 ------------------------|
 **train**               |
 **trainControl**        |
+
+Evaluation Functions    |
+------------------------|
+**predict.train**       |
+**confusionMatrix**     |
+
+&nbsp;
+
+<center>http://caret.r-forge.r-project.org/modelList.html</center>
 
 Model Training and Tuning | method='knn'
 =======================================================
@@ -523,17 +531,15 @@ holdoutAccuracy
 **Model Deployment**
 
 ```{r eval=FALSE}
+## Save model
 save(zScaleTrain, correlatedPredictors, bestModel, file="bestModel.RData")
 
+## Use model
+require(caret)
 load("bestModel.RData")
-
 scaledReducedX = predict(zScaleTrain, newDataX)[,-correlatedPredictors]
 newDataPrediction = predict(bestModel, scaledReducedX)
 ```
-
-
-
-
 
 Aside: Random Forest OOB
 =========================================================
@@ -553,3 +559,19 @@ OOB was unaware of **train$subject**.
 
 OOB predicts a generalization error of `r formatC(100*oob.accuracy, digits=3)`% which is
 notably higher than our CV estimate and our measured hold-out error.
+
+Other Caret Functions of Note
+========================================================
+
+&nbsp;
+
+Recursive Feature Elimination
+
+<center>**rfeIter** and **rfe**</center>
+
+Questions?
+========================================================
+
+&nbsp;
+
+https://github.com/Syrus/201311

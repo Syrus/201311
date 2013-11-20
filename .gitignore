@@ -9,3 +9,4 @@ Caret*.md
 Caret*-figure*
 *RData
 *-cache/*
+*rpubs.html
